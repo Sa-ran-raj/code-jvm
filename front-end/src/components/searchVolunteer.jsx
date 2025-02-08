@@ -77,9 +77,7 @@ const VolunteerSearch = () => {
   };
 
   const handleWhatsAppRedirect = (phoneNo) => {
-    // Remove any non-numeric characters from phone number
     const cleanPhoneNo = phoneNo.replace(/\D/g, '');
-    // Open WhatsApp Web with the phone number
     window.open(`https://wa.me/${cleanPhoneNo}`, '_blank');
   };
 
