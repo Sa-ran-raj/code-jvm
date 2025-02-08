@@ -1,7 +1,24 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { MapPin, CheckCircle2, XCircle } from "lucide-react";
 
 const VolunteerForm = () => {
+
+  useEffect(()=>{
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        console.log("Latitude:", position.coords.latitude);
+        console.log("Longitude:", position.coords.longitude);
+      },
+      (error) => {
+        console.error("Error retrieving location:", error);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
+  },[])
   const [formData, setFormData] = useState({
     name: "",
     age: "",
@@ -116,22 +133,21 @@ const VolunteerForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+      
     if (selectedDates.length === 0) {
       setStatus({ message: "Select at least one available date", type: "error" });
       return;
     }
-
+  
     const phoneRegex = /^[6-9]\d{9}$/;
     if (!phoneRegex.test(formData.phoneNo)) {
       setStatus({ message: "Invalid phone number", type: "error" });
       return;
     }
-
+  
     try {
       setLoading(true);
-      // Replace this with your actual API endpoint
-      const response = await fetch('/api/volunteers', {
+      const response = await fetch('http://localhost:3000/api/volunteers', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -141,14 +157,13 @@ const VolunteerForm = () => {
           availableDates: selectedDates
         }),
       });
-
+  
+      const data = await response.json();
       if (!response.ok) {
-        throw new Error('Registration failed');
+        throw new Error(data.error || 'Registration failed');
       }
-      
+        
       setStatus({ message: "Registration successful!", type: "success" });
-      
-      // Reset form
       setFormData({
         name: "", age: "", gender: "", phoneNo: "",
         volunteerLanguage: "", location: "", coordinates: null
@@ -156,7 +171,7 @@ const VolunteerForm = () => {
       setSelectedDates([]);
     } catch (error) {
       setStatus({ 
-        message: "Registration failed. Please try again.", 
+        message: error.message || "Registration failed. Please try again.", 
         type: "error" 
       });
     } finally {
