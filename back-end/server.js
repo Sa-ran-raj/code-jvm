@@ -118,8 +118,6 @@ mongoose
         
         return npiResponse.data;
       }
-      
-
       const schemeData = response.data[0];
       const newScheme = new Scheme({
         name: schemeData.name,
