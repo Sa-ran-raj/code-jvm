@@ -1,10 +1,10 @@
 import React from 'react';
 import Navbar from './Navbar';
 import image from "./image.webp";
-import hand from "./hand.jpg"
+import hand from "./hand.jpg";
 import { Link, useNavigate } from 'react-router-dom';
-import { Navigate } from 'react-router-dom';
 import { FaHandsHelping, FaComments, FaCheckCircle, FaUserPlus } from 'react-icons/fa';
+
 const Home = () => {
     const navigate=useNavigate();
   return (
@@ -74,19 +74,5 @@ const Home = () => {
     </div>
   );
 };
+
 export default Home;
-const style = {
-  ["@keyframes slide-up"]: {
-    "0%": { transform: "translateY(100px)", opacity: "0" },
-    "100%": { transform: "translateY(0)", opacity: "1" }
-  },
-  ["@keyframes fade-in"]: {
-    "0%": { opacity: "0" },
-    "100%": { opacity: "1" }
-  },
-  ["@keyframes float"]: {
-    "0%": { transform: "translateY(0)" },
-    "50%": { transform: "translateY(-15px)" },
-    "100%": { transform: "translateY(0)" }
-  }
-};

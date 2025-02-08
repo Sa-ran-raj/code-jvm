@@ -239,7 +239,6 @@ app.post('/ask', async (req, res) => {
     const schemeNameResult = await model.generateContent(schemeNamePrompt);
     const schemeName = schemeNameResult.response.text();
 
-    // Parallel execution of scheme details and web search
     const [schemeDetails, searchResults] = await Promise.all([
       schemeName ? fetchSchemeDetails(schemeName) : null,
       searchDuckDuckGo(`${question} government scheme india`)
@@ -272,6 +271,51 @@ app.post('/ask', async (req, res) => {
       details: error.message
     });
   }
+});
+
+
+const GOVERNMENT_DOMAINS = [
+  ".gov.in",
+  ".nic.in",
+  "india.gov.in",
+  "myscheme.gov.in",
+  "digitalindia.gov.in"
+];
+const isGovernmentURL = (url) => {
+  try {
+    const parsedUrl = new URL(url);
+    return GOVERNMENT_DOMAINS.some((domain) => parsedUrl.hostname.endsWith(domain));
+  } catch (error) {
+    return false; 
+  }
+};
+
+const checkLinkStatus = async (url) => {
+  try {
+    const response = await axios.head(url, { timeout: 5000 });
+    return response.status >= 200 && response.status < 400;
+  } catch (error) {
+    return false; 
+  }
+};
+
+app.post("/verify-link", async (req, res) => {
+  const { link } = req.body;
+  if (!link) {
+    return res.status(400).json({ success: false, message: "Missing link parameter" });
+  }
+  const isGov = isGovernmentURL(link);
+  const isValid = await checkLinkStatus(link);
+  res.json({
+    success: true,
+    isGovernment: isGov,
+    isValidLink: isValid,
+    message: isGov
+      ? isValid
+        ? "Valid government website link"
+        : "Government website is unreachable"
+      : "Not a recognized government website"
+  });
 });
 
 app.post('/clear-cache', (req, res) => {
