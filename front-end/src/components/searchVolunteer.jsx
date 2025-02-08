@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mic, Search } from 'lucide-react';
+import { Mic, Search, MessageCircle } from 'lucide-react';
 
 const VolunteerSearch = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -48,18 +48,15 @@ const VolunteerSearch = () => {
     setMessage('');
 
     const searchUrl = `http://localhost:3000/api/volunteers/search?location=${encodeURIComponent(location || searchTerm)}`;
-    console.log('Making request to:', searchUrl); // Debug log
-
+    
     try {
       const response = await fetch(searchUrl);
-      console.log('Response status:', response.status); // Debug log
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
       const result = await response.json();
-      console.log('Search result:', result); // Debug log
       
       if (result.success) {
         setVolunteers(result.data);
@@ -77,6 +74,13 @@ const VolunteerSearch = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleWhatsAppRedirect = (phoneNo) => {
+    // Remove any non-numeric characters from phone number
+    const cleanPhoneNo = phoneNo.replace(/\D/g, '');
+    // Open WhatsApp Web with the phone number
+    window.open(`https://wa.me/${cleanPhoneNo}`, '_blank');
   };
 
   return (
@@ -156,6 +160,15 @@ const VolunteerSearch = () => {
                     ))}
                   </div>
                 </div>
+              </div>
+              <div className="mt-4 flex justify-end">
+                <button
+                  onClick={() => handleWhatsAppRedirect(volunteer.phoneNo)}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition duration-200"
+                >
+                  <MessageCircle size={20} />
+                  Contact on WhatsApp
+                </button>
               </div>
             </div>
           ))}
