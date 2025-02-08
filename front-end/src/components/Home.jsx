@@ -5,6 +5,8 @@ import hand from "./hand.jpg";
 import { Link, useNavigate } from 'react-router-dom';
 import { FaHandsHelping, FaComments, FaCheckCircle, FaUserPlus } from 'react-icons/fa';
 
+import chat from '../assets/chat.jpg'
+
 const Home = () => {
     const navigate=useNavigate();
   return (
@@ -14,10 +16,10 @@ const Home = () => {
         <div className="flex flex-col md:flex-row items-center justify-between gap-12">
           <div className="md:w-1/2 space-y-6 animate-fade-in">
             <h1 className="text-4xl md:text-6xl font-bold text-purple-800 animate-slide-up">
-              Empowering Women
+              Empowering People
             </h1>
             <p className="text-xl md:text-2xl text-gray-700 leading-relaxed animate-slide-up delay-100">
-              "When women rise, we all rise. Progress in women's development isn't just about equality – it's about unleashing the full potential of humanity. Every step forward for women is a leap forward for society."
+            Empower the rural, uplift the nation. When villages thrive, the whole country rises!
             </p>
             <button className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-8 py-3 rounded-full 
               transform transition duration-300 hover:scale-105 animate-bounce">
@@ -39,9 +41,9 @@ const Home = () => {
       </main>
       <div className="absolute bottom-12 right-12 animate-float">
   <Link to="/chatbot">
-    <div className="relative w-16 h-16 rounded-full overflow-hidden">
+    <div className="relative w-25 h-25 rounded-full overflow-hidden">
       <img 
-        src={hand} 
+        src={chat} 
         alt="Hand illustration" 
         className="w-full h-full object-cover" 
       />
