@@ -5,6 +5,8 @@ import hand from "./hand.jpg"
 import { Link, useNavigate } from 'react-router-dom';
 import { Navigate } from 'react-router-dom';
 import { FaHandsHelping, FaComments, FaCheckCircle, FaUserPlus } from 'react-icons/fa';
+import chat from '../assets/chat.jpg'
+
 const Home = () => {
     const navigate=useNavigate();
   return (
@@ -39,9 +41,9 @@ const Home = () => {
       </main>
       <div className="absolute bottom-12 right-12 animate-float">
   <Link to="/chatbot">
-    <div className="relative w-16 h-16 rounded-full overflow-hidden">
+    <div className="relative w-25 h-25 rounded-full overflow-hidden">
       <img 
-        src={hand} 
+        src={chat} 
         alt="Hand illustration" 
         className="w-full h-full object-cover" 
       />
