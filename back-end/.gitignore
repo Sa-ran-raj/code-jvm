@@ -1,0 +1,22 @@
+.env
+node_modules
+archive
+model.safetensors
+documents.csv
+combined.log
+app.js
+model.py
+faiss.py
+slang_correction.json
+error.log
+map.js
+server.txt
+schemes_data.csv
+schemes_data_1.csv
+text.py
+tf_model.h5
+worker.js
+chatbot.txt
+structured_schemes.csv
+pycache
+node modules
