@@ -56,7 +56,7 @@ const Home = () => {
 <div className="flex flex-wrap justify-around items-center gap-6 p-6">
       <div className="flex flex-col items-center cursor-pointer justify-center p-4 border rounded-lg shadow-md hover:shadow-xl transition-all duration-300">
         <FaHandsHelping className="text-4xl text-purple-600 mb-2" />
-        <span className="font-semibold text-lg" onClick={()=>navigate('/home/vol-req')}>Volunteer Request</span>
+        <span className="font-semibold text-lg" onClick={()=>navigate('/home/search-vol')}>Volunteer Request</span>
       </div>
       <div className="flex flex-col items-center cursor-pointer justify-center p-4 border rounded-lg shadow-md hover:shadow-xl transition-all duration-300">
         <FaComments className="text-4xl text-green-600 mb-2" />
@@ -68,7 +68,7 @@ const Home = () => {
       </div>
       <div className="flex flex-col items-center cursor-pointer justify-center p-4 border rounded-lg shadow-md hover:shadow-xl transition-all duration-300">
         <FaUserPlus className="text-4xl text-red-600 mb-2" />
-        <span className="font-semibold text-lg" onClick={()=>navigate('/home/vol')}>Volunteering</span>
+        <span className="font-semibold text-lg" onClick={()=>navigate('/home/vol-req')}>Volunteering</span>
       </div>
     </div>
     </div>

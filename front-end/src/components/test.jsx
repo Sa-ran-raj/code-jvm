@@ -2,29 +2,31 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Mic, Send, Volume2, Loader2, Bot, User, X, Pause, Play, ExternalLink, Sparkles, History, MessageSquare, HelpCircle, Globe } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// Keep your existing detectLanguage and translateText functions...
 const detectLanguage = async (text) => {
-  try {
-    const response = await fetch(`https://translate.googleapis.com/translate_a/detect?client=gtx&q=${encodeURIComponent(text)}`);
-    const data = await response.json();
-    return data?.data?.detections?.[0]?.[0]?.language || 'en';
-  } catch (error) {
-    console.error('Language detection error:', error);
-    return 'en';
-  }
-};
-
-const translateText = async (text, targetLang) => {
-  try {
-    const response = await fetch(
-      `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`
-    );
-    const data = await response.json();
-    return data[0].map(x => x[0]).join('');
-  } catch (error) {
-    console.error('Translation error:', error);
-    return text;
-  }
-};
+    try {
+      const response = await fetch(`https://translate.googleapis.com/translate_a/detect?client=gtx&q=${encodeURIComponent(text)}`);
+      const data = await response.json();
+      return data?.data?.detections?.[0]?.[0]?.language || 'en';
+    } catch (error) {
+      console.error('Language detection error:', error);
+      return 'en';
+    }
+  };
+  
+  const translateText = async (text, targetLang) => {
+    try {
+      const response = await fetch(
+        `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`
+      );
+      const data = await response.json();
+      return data[0].map(x => x[0]).join('');
+    } catch (error) {
+      console.error('Translation error:', error);
+      return text;
+    }
+  };
+  
 
 const supportedLanguages = {
   en: 'English',
@@ -40,43 +42,159 @@ const supportedLanguages = {
   or: 'ଓଡ଼ିଆ'
 };
 
-const generateDynamicSuggestions = (lastBotMessage, selectedLanguage) => {
-  const contextualSuggestions = {
-    default: [
-      "What are the eligibility criteria?",
-      "How can I apply?",
-      "What documents do I need?",
-      "What are the benefits?",
-      "Are there any recent updates?"
-    ],
-    schemes: [
-      "Eligibility details",
-      "Application process",
-      "Financial benefits",
-      "Required documents",
-      "State-specific variations"
-    ],
-    location: [
-      "Schemes in this region",
-      "Local application centers",
-      "Regional eligibility criteria",
-      "Additional local support",
-      "Implementation status"
-    ]
+// Enhanced speech recognition hook
+const useSpeechRecognition = (selectedLanguage, onResult) => {
+  const recognition = useRef(null);
+  const [isListening, setIsListening] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      setError('Speech recognition is not supported in this browser.');
+      return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition.current = new SpeechRecognition();
+    recognition.current.continuous = true;
+    recognition.current.interimResults = true;
+    recognition.current.lang = selectedLanguage;
+
+    recognition.current.onstart = () => {
+      setIsListening(true);
+      setError(null);
+    };
+
+    recognition.current.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.current.onerror = (event) => {
+      console.error('Speech Recognition Error:', event.error);
+      setError('Speech recognition error. Please try again.');
+      setIsListening(false);
+    };
+
+    recognition.current.onresult = (event) => {
+      const transcript = Array.from(event.results)
+        .map(result => result[0].transcript)
+        .join('');
+      
+      if (event.results[0].isFinal) {
+        onResult(transcript);
+      }
+    };
+
+    return () => {
+      if (recognition.current) {
+        recognition.current.stop();
+      }
+    };
+  }, [selectedLanguage, onResult]);
+
+  const toggleListening = () => {
+    if (isListening) {
+      recognition.current?.stop();
+    } else {
+      recognition.current?.start();
+    }
   };
 
-  const messageKeywords = lastBotMessage.toLowerCase().split(/\s+/);
-  const matchedCategory = 
-    messageKeywords.some(keyword => ['scheme', 'yojana', 'program', 'policy'].includes(keyword)) ? 'schemes' :
-    messageKeywords.some(keyword => ['state', 'district', 'region', 'local'].includes(keyword)) ? 'location' :
-    'default';
-
-  return contextualSuggestions[matchedCategory];
+  return { isListening, error, toggleListening };
 };
 
+// Enhanced speech synthesis hook
+const useSpeechSynthesis = (selectedLanguage) => {
+  const synth = useRef(window.speechSynthesis);
+  const utterance = useRef(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [currentText, setCurrentText] = useState(null);
+  const [voices, setVoices] = useState([]);
+
+  useEffect(() => {
+    const loadVoices = () => {
+      const availableVoices = synth.current.getVoices();
+      setVoices(availableVoices);
+    };
+
+    loadVoices();
+    if (synth.current.onvoiceschanged !== undefined) {
+      synth.current.onvoiceschanged = loadVoices;
+    }
+
+    return () => {
+      if (synth.current) {
+        synth.current.cancel();
+      }
+    };
+  }, []);
+
+  const getVoiceForLanguage = (lang) => {
+    const languageCode = lang.split('-')[0];
+    return voices.find(voice => 
+      voice.lang.startsWith(languageCode) || 
+      (languageCode === 'en' && voice.lang.startsWith('en-'))
+    ) || voices.find(voice => voice.lang.startsWith('en-')) || voices[0];
+  };
+
+  const speak = (text) => {
+    if (!synth.current) return;
+
+    synth.current.cancel();
+    setCurrentText(text);
+
+    utterance.current = new SpeechSynthesisUtterance(text);
+    utterance.current.voice = getVoiceForLanguage(selectedLanguage);
+    utterance.current.lang = selectedLanguage;
+    utterance.current.rate = 1;
+    utterance.current.pitch = 1;
+
+    utterance.current.onstart = () => setIsSpeaking(true);
+    utterance.current.onend = () => {
+      setIsSpeaking(false);
+      setCurrentText(null);
+    };
+    utterance.current.onpause = () => setIsSpeaking(false);
+    utterance.current.onresume = () => setIsSpeaking(true);
+    utterance.current.onerror = (event) => {
+      console.error('Speech synthesis error:', event);
+      setIsSpeaking(false);
+      setCurrentText(null);
+    };
+
+    synth.current.speak(utterance.current);
+  };
+
+  const pause = () => {
+    if (synth.current) {
+      synth.current.pause();
+      setIsSpeaking(false);
+    }
+  };
+
+  const resume = () => {
+    if (synth.current) {
+      synth.current.resume();
+      setIsSpeaking(true);
+    }
+  };
+
+  const stop = () => {
+    if (synth.current) {
+      synth.current.cancel();
+      setIsSpeaking(false);
+      setCurrentText(null);
+    }
+  };
+
+  return { speak, pause, resume, stop, isSpeaking, currentText };
+};
+
+// Enhanced ChatMessage component
 const ChatMessage = ({ message, onSpeak, isSpeaking, onPause, currentSpeakingMessage, resumeSpeech }) => {
   const isBot = message.type === 'bot';
-  
+  const isCurrentlySpeaking = isSpeaking && currentSpeakingMessage === message.text;
+
   const renderLinks = (text) => {
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     return text.split(urlRegex).map((part, index) =>
@@ -105,7 +223,7 @@ const ChatMessage = ({ message, onSpeak, isSpeaking, onPause, currentSpeakingMes
       <div className={`flex max-w-[80%] ${isBot ? 'flex-row' : 'flex-row-reverse'}`}>
         <div className={`flex items-start space-x-2 ${isBot ? 'flex-row' : 'flex-row-reverse'}`}>
           <div className={`p-2 rounded-full shadow-md ${isBot ? 'bg-indigo-500' : 'bg-emerald-500'}`}>
-            {isBot ? <Sparkles className="w-6 h-6 text-white" /> : <User className="w-6 h-6 text-white" />}
+            {isBot ? <Bot className="w-6 h-6 text-white" /> : <User className="w-6 h-6 text-white" />}
           </div>
           <div className={`p-4 rounded-2xl shadow-lg ${isBot ? 'bg-gray-100 border border-gray-200' : 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white'}`}>
             <p className="text-sm whitespace-pre-wrap">{renderLinks(message.text)}</p>
@@ -124,17 +242,19 @@ const ChatMessage = ({ message, onSpeak, isSpeaking, onPause, currentSpeakingMes
               <span className="text-xs opacity-50">{message.timestamp}</span>
               {isBot && (
                 <div className="flex items-center space-x-2">
-                  {isSpeaking ? (
+                  {isCurrentlySpeaking ? (
                     <button
                       onClick={onPause}
                       className="text-indigo-500 hover:text-indigo-600 transition-colors"
+                      aria-label="Pause speech"
                     >
                       <Pause size={16} />
                     </button>
                   ) : (
                     <button
-                      onClick={currentSpeakingMessage === message.text ? resumeSpeech : () => onSpeak(message.text)}
+                      onClick={() => onSpeak(message.text)}
                       className="text-gray-500 hover:text-indigo-500 transition-colors"
+                      aria-label="Play speech"
                     >
                       <Play size={16} />
                     </button>
@@ -148,6 +268,8 @@ const ChatMessage = ({ message, onSpeak, isSpeaking, onPause, currentSpeakingMes
     </motion.div>
   );
 };
+
+// Keep your existing FollowUpSuggestions, QuestionHistorySidebar, and LanguageSelector components...
 
 const FollowUpSuggestions = ({ onSuggest, lastBotMessage, selectedLanguage }) => {
   const [suggestions, setSuggestions] = useState([]);
@@ -230,22 +352,33 @@ const LanguageSelector = ({ selectedLanguage, onLanguageChange }) => (
   </select>
 );
 
+
 const Chatbot = () => {
   const [userInput, setUserInput] = useState('');
   const [chatHistory, setChatHistory] = useState([]);
   const [questionHistory, setQuestionHistory] = useState([]);
-  const [isListening, setIsListening] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [currentSpeakingMessage, setCurrentSpeakingMessage] = useState(null);
   const [showWelcome, setShowWelcome] = useState(true);
   const [selectedLanguage, setSelectedLanguage] = useState('en');
   
   const chatContainerRef = useRef(null);
-  const recognition = useRef(null);
-  const synth = useRef(window.speechSynthesis);
-  const currentUtterance = useRef(null);
+
+  // Initialize speech hooks
+  const { speak, pause, resume, stop, isSpeaking, currentText } = useSpeechSynthesis(selectedLanguage);
+  const { isListening, error: speechError, toggleListening } = useSpeechRecognition(
+    selectedLanguage,
+    (transcript) => {
+      setUserInput(transcript);
+      handleSend(transcript);
+    }
+  );
+
+  useEffect(() => {
+    if (speechError) {
+      setError(speechError);
+    }
+  }, [speechError]);
 
   useEffect(() => {
     if (chatContainerRef.current) {
@@ -253,6 +386,7 @@ const Chatbot = () => {
     }
   }, [chatHistory]);
 
+  // Keep your existing handleSend, handleLanguageChange, and other helper functions...
   const setupSpeechRecognition = () => {
     if (!window.webkitSpeechRecognition && !window.SpeechRecognition) {
       setError('Speech recognition is not supported in this browser.');
@@ -433,125 +567,130 @@ const Chatbot = () => {
   };
 
   return (
+    // Your existing JSX with updated speech-related props and handlers...
     <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 p-4 flex">
-      <QuestionHistorySidebar 
-        history={questionHistory} 
-        onHistorySelect={handleHistorySelect}
-      />
-      <div className="flex-grow max-w-4xl bg-white/95 backdrop-blur-lg rounded-3xl shadow-2xl overflow-hidden">
-        <div className="bg-gradient-to-r from-indigo-600 to-purple-700 p-6 text-white">
-          <div className="flex justify-between items-center">
-            <h1 className="text-3xl font-bold flex items-center gap-3">
-              <Sparkles className="w-8 h-8" /> Gov Schemes AI Assistant
-            </h1>
-            <div className="flex items-center gap-3 bg-gradient-to-r from-blue-600 to-purple-600 p-2 rounded-lg shadow-lg">
-              <Globe className="w-5 h-5 text-white" />
-              <LanguageSelector 
-                selectedLanguage={selectedLanguage}
-                onLanguageChange={handleLanguageChange}
-                className="bg-transparent text-white font-semibold border-none focus:outline-none cursor-pointer"
-              />
-            </div>
-          </div>
-          <p className="text-sm text-white/80 mt-2">
-            Your intelligent guide to government schemes and policies
-          </p>
-        </div>
-        <div className="p-6">
-          <AnimatePresence>
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded-r-lg flex justify-between items-center"
-              >
-                <p>{error}</p>
-                <button onClick={() => setError(null)} className="text-red-700 hover:text-red-900">
-                  <X size={20} />
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-          <div
-            ref={chatContainerRef}
-            className="bg-gray-50 rounded-xl p-4 h-[500px] overflow-y-auto mb-4 space-y-4 scroll-smooth border border-gray-200"
-          >
-            <AnimatePresence>
-              {showWelcome ? (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="flex justify-center items-center h-full"
-                >
-                  <div className="text-center text-gray-600">
-                    <Sparkles size={64} className="mx-auto mb-4 text-indigo-500" />
-                    <h2 className="text-2xl font-bold mb-2 text-indigo-700">Welcome to Gov Schemes AI</h2>
-                    <p className="mb-4">Your intelligent assistant for government schemes</p>
-                    <div className="bg-indigo-50 p-4 rounded-xl inline-block">
-                      <p>Try asking about:</p>
-                      <ul className="text-left list-disc list-inside mt-2 space-y-1 text-sm">
-                        <li>PM Kisan Samman Nidhi Yojana</li>
-                        <li>Ayushman Bharat Scheme</li>
-                        <li>Student scholarship programs</li>
-                      </ul>
-                    </div>
-                  </div>
-                </motion.div>
-              ) : (
-                chatHistory.map((message, index) => (
-                  <ChatMessage
-                    key={index}
-                    message={message}
-                    isLast={index === chatHistory.length - 1}
-                    onSpeak={speakText}
-                    onPause={pauseSpeech}
-                    resumeSpeech={resumeSpeech}
-                    isSpeaking={isSpeaking && currentSpeakingMessage === message.text}
-                    currentSpeakingMessage={currentSpeakingMessage}
+          <QuestionHistorySidebar 
+            history={questionHistory} 
+            onHistorySelect={handleHistorySelect}
+          />
+          
+          <div className="flex-grow max-w-4xl bg-white/95 backdrop-blur-lg rounded-3xl shadow-2xl overflow-hidden">
+            <div className="bg-gradient-to-r from-indigo-600 to-purple-700 p-6 text-white">
+              <div className="flex justify-between items-center">
+                <h1 className="text-3xl font-bold flex items-center gap-3">
+                  <Sparkles className="w-8 h-8" /> Gov Schemes AI Assistant
+                </h1>
+                <div className="flex items-center gap-3 bg-gradient-to-r from-blue-600 to-purple-600 p-2 rounded-lg shadow-lg">
+                  <Globe className="w-5 h-5 text-white" />
+                  <LanguageSelector 
+                    selectedLanguage={selectedLanguage}
+                    onLanguageChange={handleLanguageChange}
+                    className="bg-transparent text-white font-semibold border-none focus:outline-none cursor-pointer"
                   />
-                ))
-              )}
-            </AnimatePresence>
-          </div>
-
-          <div className="flex gap-3 flex-col">
-            <div className="flex gap-3">
-              <textarea
-                value={userInput}
-                onChange={(e) => setUserInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
-                placeholder={`Ask about any government scheme in ${supportedLanguages[selectedLanguage]}...`}
-                className="w-full p-4 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 bg-white transition-all resize-none"
-                rows="2"
-              />
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={handleVoiceInput}
-                className={`p-4 rounded-xl ${isListening ? 'bg-red-500' : 'bg-indigo-500'} text-white transition-colors`}
-              >
-                <Mic className="w-6 h-6" />
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => handleSend()}
-                disabled={loading}
-                className="p-4 bg-purple-500 text-white rounded-xl transition-colors disabled:opacity-50"
-              >
-                {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Send className="w-6 h-6" />}
-              </motion.button>
+                </div>
+              </div>
+              <p className="text-sm text-white/80 mt-2">
+                Your intelligent guide to government schemes and policies
+              </p>
             </div>
-            <FollowUpSuggestions 
-              onSuggest={handleSuggestedFollow} 
-              lastBotMessage={chatHistory.length > 0 ? chatHistory[chatHistory.length - 1].text : ''}
-              selectedLanguage={selectedLanguage}
-            />
+    
+            <div className="p-6">
+              <AnimatePresence>
+                {error && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded-r-lg flex justify-between items-center"
+                  >
+                    <p>{error}</p>
+                    <button onClick={() => setError(null)} className="text-red-700 hover:text-red-900">
+                      <X size={20} />
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+    
+              <div
+                ref={chatContainerRef}
+                className="bg-gray-50 rounded-xl p-4 h-[500px] overflow-y-auto mb-4 space-y-4 scroll-smooth border border-gray-200"
+              >
+                <AnimatePresence>
+                  {showWelcome ? (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="flex justify-center items-center h-full"
+                    >
+                      <div className="text-center text-gray-600">
+                        <Sparkles size={64} className="mx-auto mb-4 text-indigo-500" />
+                        <h2 className="text-2xl font-bold mb-2 text-indigo-700">Welcome to Gov Schemes AI</h2>
+                        <p className="mb-4">Your intelligent assistant for government schemes</p>
+                        <div className="bg-indigo-50 p-4 rounded-xl inline-block">
+                          <p>Try asking about:</p>
+                          <ul className="text-left list-disc list-inside mt-2 space-y-1 text-sm">
+                            <li>PM Kisan Samman Nidhi Yojana</li>
+                            <li>Ayushman Bharat Scheme</li>
+                            <li>Student scholarship programs</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ) : (
+                    chatHistory.map((message, index) => (
+                      <ChatMessage
+                        key={index}
+                        message={message}
+                        isLast={index === chatHistory.length - 1}
+                        onSpeak={speakText}
+                        onPause={pauseSpeech}
+                        resumeSpeech={resumeSpeech}
+                        isSpeaking={isSpeaking && currentSpeakingMessage === message.text}
+                        currentSpeakingMessage={currentSpeakingMessage}
+                      />
+                    ))
+                  )}
+                </AnimatePresence>
+              </div>
+    
+              <div className="flex gap-3 flex-col">
+                <div className="flex gap-3">
+                  <textarea
+                    value={userInput}
+                    onChange={(e) => setUserInput(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+                    placeholder={`Ask about any government scheme in ${supportedLanguages[selectedLanguage]}...`}
+                    className="w-full p-4 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 bg-white transition-all resize-none"
+                    rows="2"
+                  />
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleVoiceInput}
+                    className={`p-4 rounded-xl ${isListening ? 'bg-red-500' : 'bg-indigo-500'} text-white transition-colors`}
+                  >
+                    <Mic className="w-6 h-6" />
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => handleSend()}
+                    disabled={loading}
+                    className="p-4 bg-purple-500 text-white rounded-xl transition-colors disabled:opacity-50"
+                  >
+                    {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Send className="w-6 h-6" />}
+                  </motion.button>
+                </div>
+                <FollowUpSuggestions 
+                  onSuggest={handleSuggestedFollow} 
+                  lastBotMessage={chatHistory.length > 0 ? chatHistory[chatHistory.length - 1].text : ''}
+                  selectedLanguage={selectedLanguage}
+                />
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
   );
 };
+
 export default Chatbot;
