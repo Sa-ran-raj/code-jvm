@@ -8,22 +8,193 @@ const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const User = require("./models/User");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
+const axios = require('axios');
+const cheerio = require('cheerio');
+
 const genai = new GoogleGenerativeAI('AIzaSyBrjSjw2Y6nbTq182znm7-tzODn-N2cTH0');
 const model = genai.getGenerativeModel({ model: "gemini-pro" });
+
 const app = express();
 app.use(cors({ origin: "http://localhost:5173", credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
+
+// Schema definition
+const schemeSchema = new mongoose.Schema({
+  name: String,
+  description: String,
+  applicationLink: String,
+  eligibility: String,
+  benefits: String,
+  lastUpdated: { type: Date, default: Date.now }
+});
+
+const Scheme = mongoose.model('Scheme', schemeSchema);
+
+// Session configuration
 app.use(
   session({
     secret: "your_secret_key",
     resave: false,
     saveUninitialized: false,
-    cookie: { maxAge: 2 * 24 * 60 * 60 * 1000 }, 
+    cookie: { maxAge: 2 * 24 * 60 * 60 * 1000 },
   })
 );
+
 app.use(passport.initialize());
 app.use(passport.session());
+
+// Enhanced DuckDuckGo search function with link extraction
+async function searchDuckDuckGo(query) {
+  try {
+    const response = await axios.get('https://html.duckduckgo.com/html/', {
+      params: {
+        q: query,
+      },
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      }
+    });
+
+    const $ = cheerio.load(response.data);
+    const results = [];
+
+    $('.result').each((i, element) => {
+      if (i < 5) {
+        const title = $(element).find('.result__title').text().trim();
+        const snippet = $(element).find('.result__snippet').text().trim();
+        const url = $(element).find('.result__url').text().trim();
+        const link = $(element).find('.result__title a').attr('href');
+
+        if (title && snippet) {
+          results.push({
+            title,
+            snippet,
+            url,
+            link: link || url
+          });
+        }
+      }
+    });
+
+    return results;
+  } catch (error) {
+    console.error('DuckDuckGo search error:', error);
+    return [];
+  }
+}
+
+// Function to extract application link from search results
+function extractApplicationLink(searchResults, schemeName) {
+  const governmentDomains = [
+    '.gov.in',
+    '.nic.in',
+    'india.gov.in',
+    'digital.gov.in',
+    'myscheme.gov.in'
+  ];
+
+  for (const result of searchResults) {
+    const link = result.link;
+    if (link && governmentDomains.some(domain => link.includes(domain))) {
+      // Check if the link contains keywords indicating it's an application page
+      const applicationKeywords = ['apply', 'registration', 'application', 'register'];
+      if (applicationKeywords.some(keyword => 
+        result.title.toLowerCase().includes(keyword) || 
+        result.snippet.toLowerCase().includes(keyword))) {
+        return link;
+      }
+    }
+  }
+
+  // If no specific application link found, search for official scheme page
+  for (const result of searchResults) {
+    const link = result.link;
+    if (link && governmentDomains.some(domain => link.includes(domain))) {
+      return link;
+    }
+  }
+
+  // Default fallback to MyScheme portal with scheme name as search parameter
+  return `https://myscheme.gov.in/search?keyword=${encodeURIComponent(schemeName)}`;
+}
+
+// Enhanced prompt generation
+function generatePrompt(question, schemeDetails, searchResults) {
+  let basePrompt = `As an AI assistant specializing in government schemes and policies, help with the following question: ${question}\n\n`;
+  
+  if (schemeDetails) {
+    basePrompt += `Scheme details:\n${JSON.stringify(schemeDetails)}\n\n`;
+  }
+
+  if (searchResults && searchResults.length > 0) {
+    basePrompt += `Additional information from web search:\n`;
+    searchResults.forEach((result, index) => {
+      basePrompt += `Source ${index + 1}:\nTitle: ${result.title}\nSummary: ${result.snippet}\nLink: ${result.link}\n\n`;
+    });
+  }
+
+  basePrompt += `Please provide a clear, conversational response that:
+  1. Directly addresses the question using all available information
+  2. Highlights key benefits and eligibility criteria if applicable
+  3. Uses simple, easy-to-understand language
+  4. Includes specific examples where helpful
+  5. Maintains cultural context and sensitivity
+  6. Includes application process and requirements
+  7. Provides relevant portal links for application (prioritize official government websites)
+  8. Cites sources when using information from web search results
+  If no scheme information is directly relevant, provide a helpful general response based on the available information.`;
+
+  return basePrompt;
+}
+
+// Enhanced scheme details fetching
+async function fetchSchemeDetails(schemeName) {
+  try {
+    // First check database
+    const schemeFromDB = await Scheme.findOne({
+      name: { $regex: new RegExp(schemeName, 'i') }
+    });
+    
+    if (schemeFromDB && 
+        (Date.now() - schemeFromDB.lastUpdated) < (24 * 60 * 60 * 1000)) {
+      return schemeFromDB;
+    }
+
+    // Perform web search for the scheme
+    const searchResults = await searchDuckDuckGo(`${schemeName} scheme details government india official`);
+    const applicationLink = extractApplicationLink(searchResults, schemeName);
+
+    // Extract information from search results
+    let schemeInfo = {
+      name: schemeName,
+      description: '',
+      applicationLink,
+      eligibility: '',
+      benefits: '',
+    };
+
+    // Update or create scheme in database
+    const updatedScheme = await Scheme.findOneAndUpdate(
+      { name: { $regex: new RegExp(schemeName, 'i') } },
+      { 
+        ...schemeInfo,
+        lastUpdated: Date.now()
+      },
+      { new: true, upsert: true }
+    );
+
+    return {
+      ...updatedScheme.toObject(),
+      searchResults
+    };
+  } catch (error) {
+    console.error('Error fetching scheme details:', error);
+    return null;
+  }
+}
+
+// Passport configuration remains the same
 passport.use(
   new GoogleStrategy(
     {
@@ -39,11 +210,10 @@ passport.use(
             googleId: profile.id,
             name: profile.displayName,
             email: profile.emails[0].value,
-            profilePic: profile.photos[0].value, 
+            profilePic: profile.photos[0].value,
           });
           await user.save();
         }
-
         return done(null, user);
       } catch (error) {
         return done(error, null);
@@ -51,20 +221,23 @@ passport.use(
     }
   )
 );
+
 passport.serializeUser((user, done) => {
   done(null, user.id);
 });
+
 passport.deserializeUser(async (id, done) => {
   const user = await User.findById(id);
   done(null, user);
 });
 
+// Auth routes remain the same
 app.get("/api/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
 
 app.get(
   "/api/auth/google/callback",
   passport.authenticate("google", {
-    successRedirect: "http://localhost:5173/home", 
+    successRedirect: "http://localhost:5173/home",
     failureRedirect: "http://localhost:5173/login",
   })
 );
@@ -76,129 +249,93 @@ app.get("/api/auth-status", (req, res) => {
     res.json({ user: null });
   }
 });
+
 app.post("/api/logout", (req, res) => {
   req.logout((err) => {
     if (err) return res.status(500).json({ message: "Logout failed" });
     res.json({ message: "Logged out successfully" });
   });
 });
+
+// Database connection
 mongoose
   .connect("mongodb+srv://saran:saranraj7s@cluster0.3nrdw.mongodb.net/sample")
   .then(() => console.log("MongoDB Connected"))
   .catch((err) => console.error("MongoDB Connection Failed:", err));
-  const responseCache = new Map();
-  const CACHE_DURATION = 3600000;
-  async function fetchSchemeDetails(schemeName) {
-    try {
 
-      const schemeFromDB = await Scheme.findOne({
-        name: { $regex: new RegExp(schemeName, 'i') }
-      });
-      
-      if (schemeFromDB) {
-        return schemeFromDB;
-      }
+// Enhanced caching
+const responseCache = new Map();
+const CACHE_DURATION = 3600000; // 1 hour
+
+
+app.post('/ask', async (req, res) => {
+  const { question } = req.body;
   
-
-      const response = await axios.get(`https://api.mockapi.io/schemes/v1/schemes?name=${encodeURIComponent(schemeName)}`);
-      if (!response.data || response.data.length === 0) {
-        const npiResponse = await axios.get(
-          `https://services.india.gov.in/service/listing?cat=41&ln=en&term=${encodeURIComponent(schemeName)}`
-        );
-        
-
-        if (npiResponse.data) {
-          const newScheme = new Scheme({
-            name: schemeName,
-            description: npiResponse.data.description || '',
-
-          });
-          await newScheme.save();
-        }
-        
-        return npiResponse.data;
-      }
-      
-
-      const schemeData = response.data[0];
-      const newScheme = new Scheme({
-        name: schemeData.name,
-        description: schemeData.description || '',
-
-      });
-      await newScheme.save();
-      
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching scheme details:', error);
-      return null;
-    }
+  if (!question) {
+    return res.status(400).json({
+      success: false,
+      error: 'Missing question in request body',
+    });
   }
-  function generatePrompt(question, schemeDetails) {
-    let basePrompt = `As an AI assistant specializing in government schemes and policies, help with the following question: ${question}\n\n`;
-    if (schemeDetails) {
-      basePrompt += `Here are the specific details about the scheme:\n${JSON.stringify(schemeDetails)}\n\n`;
-    }
-    basePrompt += `Please provide a clear, conversational response that:
-    1. Directly addresses the question using available information
-    2. Highlights key benefits and eligibility criteria if applicable
-    3. Uses simple, easy-to-understand language
-    4. Includes specific examples where helpful
-    5. Maintains cultural context and sensitivity
-    6. Includes application process and requirements
-    7. Provides relevant portal links for application
-    If no scheme information is directly relevant, provide a helpful general response based on the available information.`;
-    return basePrompt;
-  }
-  app.post('/ask', async (req, res) => {
-    const { question } = req.body; 
-    if (!question) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing question in request body',
-      });
-    }
-  
-    try {
-      const cacheKey = question.toLowerCase();
-      if (responseCache.has(cacheKey)) {
-        const cachedResponse = responseCache.get(cacheKey);
-        if (Date.now() - cachedResponse.timestamp < CACHE_DURATION) {
-          return res.json(cachedResponse.data);
-        }
-        responseCache.delete(cacheKey);
+
+  try {
+    const cacheKey = question.toLowerCase();
+    if (responseCache.has(cacheKey)) {
+      const cachedResponse = responseCache.get(cacheKey);
+      if (Date.now() - cachedResponse.timestamp < CACHE_DURATION) {
+        return res.json(cachedResponse.data);
       }
-      const schemeNamePrompt = `Extract only the government scheme name from this question, if any: ${question}`;
-      const schemeNameResult = await model.generateContent(schemeNamePrompt);
-      const schemeName = schemeNameResult.response.text();
-      const schemeDetails = schemeName ? await fetchSchemeDetails(schemeName) : null;
-      const prompt = generatePrompt(question, schemeDetails);
-      const result = await model.generateContent(prompt);
-      const aiResponse = result.response.text();
-      const finalResponse = {
-        success: true,
-        answer: aiResponse,
-        schemeDetails: schemeDetails,
-        applicationLink: schemeDetails?.applicationLink || 'https://services.india.gov.in'
-      };
-      responseCache.set(cacheKey, {
-        data: finalResponse,
-        timestamp: Date.now()
-      });
-      res.json(finalResponse);
-    } catch (error) {
-      console.error('Error:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to generate response',
-        details: error.message
-      });
+      responseCache.delete(cacheKey);
     }
-  });
-  app.post('/clear-cache', (req, res) => {
-    responseCache.clear();
-    res.json({ success: true, message: 'Cache cleared successfully' });
-  });
+
+    const schemeNamePrompt = `Extract only the government scheme name from this question, if any: ${question}`;
+    const schemeNameResult = await model.generateContent(schemeNamePrompt);
+    const schemeName = schemeNameResult.response.text();
+
+    const [schemeDetails, generalSearchResults] = await Promise.all([
+      schemeName ? fetchSchemeDetails(schemeName) : null,
+      searchDuckDuckGo(`${question} government scheme india official`)
+    ]);
+
+    const allSearchResults = [
+      ...(schemeDetails?.searchResults || []),
+      ...generalSearchResults
+    ].slice(0, 5); 
+    const prompt = generatePrompt(question, schemeDetails, allSearchResults);
+    const result = await model.generateContent(prompt);
+    const aiResponse = result.response.text();
+
+    const applicationLink = schemeDetails?.applicationLink || 
+                          extractApplicationLink(allSearchResults, schemeName) || 
+                          'https://myscheme.gov.in';
+
+    const finalResponse = {
+      success: true,
+      answer: aiResponse,
+      schemeDetails: schemeDetails,
+      searchResults: allSearchResults,
+      applicationLink
+    };
+
+    responseCache.set(cacheKey, {
+      data: finalResponse,
+      timestamp: Date.now()
+    });
+
+    res.json(finalResponse);
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate response',
+      details: error.message
+    });
+  }
+});
+app.post('/clear-cache', (req, res) => {
+  responseCache.clear();
+  res.json({ success: true, message: 'Cache cleared successfully' });
+});
 
   const volunteerRoutes = require('./routes/volunteerRoutes');
   app.use('/api',volunteerRoutes);

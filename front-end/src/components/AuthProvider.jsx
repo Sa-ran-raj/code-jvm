@@ -5,6 +5,7 @@ const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const senderName = user ? user.name : "Guest"; // Use dynamic username
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -33,7 +34,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loginWithGoogle, logout }}>
+    <AuthContext.Provider value={{ user, senderName, loginWithGoogle, logout }}>
       {children}
     </AuthContext.Provider>
   );
