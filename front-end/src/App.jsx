@@ -7,7 +7,6 @@ import Login from "./components/Login";
 import { AuthProvider } from "./components/AuthProvider";
 import Home from "./components/Home";
 import Discussion from "./components/Discussion";
-import WomenEmpowermentLoginSignup from "./components/WomenEmpowermentLoginSignup";
 import VolunteeringRequest from "./components/VolunteeringRequest";
 import LinkVerify from "./components/LinkVerify";
 import FillSchemeDetails from "./components/FillSchemeDetails";
@@ -17,7 +16,7 @@ const App = () => {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<WomenEmpowermentLoginSignup/>} />
+          <Route path="/" element={<Home/>} />
           <Route path="/home" element={<Home/>}/>
           <Route path="chatbot" element={<Chatbot/>}/>
           <Route path="/login" element={<Login/>}/>
