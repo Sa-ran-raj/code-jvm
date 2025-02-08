@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Mic, Send, Volume2, Loader2, Bot, User, X, Pause, Play, ExternalLink, Sparkles, History, MessageSquare, HelpCircle, Globe } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-
 const detectLanguage = async (text) => {
   try {
     const response = await fetch(`https://translate.googleapis.com/translate_a/detect?client=gtx&q=${encodeURIComponent(text)}`);
@@ -27,7 +26,6 @@ const translateText = async (text, targetLang) => {
   }
 };
 
-// Supported Indian languages
 const supportedLanguages = {
   en: 'English',
   hi: 'हिंदी',
@@ -68,7 +66,6 @@ const generateDynamicSuggestions = (lastBotMessage, selectedLanguage) => {
   };
 
   const messageKeywords = lastBotMessage.toLowerCase().split(/\s+/);
-  
   const matchedCategory = 
     messageKeywords.some(keyword => ['scheme', 'yojana', 'program', 'policy'].includes(keyword)) ? 'schemes' :
     messageKeywords.some(keyword => ['state', 'district', 'region', 'local'].includes(keyword)) ? 'location' :
@@ -77,8 +74,7 @@ const generateDynamicSuggestions = (lastBotMessage, selectedLanguage) => {
   return contextualSuggestions[matchedCategory];
 };
 
-// ChatMessage Component
-const ChatMessage = ({ message, isLast, onSpeak, isSpeaking, onPause, currentSpeakingMessage, resumeSpeech }) => {
+const ChatMessage = ({ message, onSpeak, isSpeaking, onPause, currentSpeakingMessage, resumeSpeech }) => {
   const isBot = message.type === 'bot';
   
   const renderLinks = (text) => {
@@ -111,19 +107,8 @@ const ChatMessage = ({ message, isLast, onSpeak, isSpeaking, onPause, currentSpe
           <div className={`p-2 rounded-full shadow-md ${isBot ? 'bg-indigo-500' : 'bg-emerald-500'}`}>
             {isBot ? <Sparkles className="w-6 h-6 text-white" /> : <User className="w-6 h-6 text-white" />}
           </div>
-          <div
-            className={`p-4 rounded-2xl shadow-lg ${
-              isBot ? 'bg-gray-100 border border-gray-200' : 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white'
-            }`}
-          >
-            <p className="text-sm whitespace-pre-wrap">
-              {renderLinks(message.text)}
-            </p>
-            {message.originalText && (
-              <p className="text-xs mt-2 text-gray-500">
-                Original: {message.originalText}
-              </p>
-            )}
+          <div className={`p-4 rounded-2xl shadow-lg ${isBot ? 'bg-gray-100 border border-gray-200' : 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white'}`}>
+            <p className="text-sm whitespace-pre-wrap">{renderLinks(message.text)}</p>
             {message.applicationLink && (
               <a
                 href={message.applicationLink}
@@ -164,7 +149,6 @@ const ChatMessage = ({ message, isLast, onSpeak, isSpeaking, onPause, currentSpe
   );
 };
 
-// FollowUpSuggestions Component
 const FollowUpSuggestions = ({ onSuggest, lastBotMessage, selectedLanguage }) => {
   const [suggestions, setSuggestions] = useState([]);
 
@@ -198,10 +182,9 @@ const FollowUpSuggestions = ({ onSuggest, lastBotMessage, selectedLanguage }) =>
   );
 };
 
-// QuestionHistorySidebar Component
 const QuestionHistorySidebar = ({ history, onHistorySelect }) => {
   const groupedHistory = history.reduce((acc, question) => {
-    const key = question.split(' ')[0]; 
+    const key = question.split(' ')[0];
     if (!acc[key]) acc[key] = [];
     acc[key].push(question);
     return acc;
@@ -233,7 +216,6 @@ const QuestionHistorySidebar = ({ history, onHistorySelect }) => {
   );
 };
 
-// Language Selector Component
 const LanguageSelector = ({ selectedLanguage, onLanguageChange }) => (
   <select
     value={selectedLanguage}
@@ -248,7 +230,6 @@ const LanguageSelector = ({ selectedLanguage, onLanguageChange }) => (
   </select>
 );
 
-// Main Chatbot Component
 const Chatbot = () => {
   const [userInput, setUserInput] = useState('');
   const [chatHistory, setChatHistory] = useState([]);
@@ -272,7 +253,6 @@ const Chatbot = () => {
     }
   }, [chatHistory]);
 
-  // Speech recognition setup
   const setupSpeechRecognition = () => {
     if (!window.webkitSpeechRecognition && !window.SpeechRecognition) {
       setError('Speech recognition is not supported in this browser.');
@@ -309,7 +289,6 @@ const Chatbot = () => {
     return recognitionInstance;
   };
 
-  // Speech synthesis functions
   const speakText = (text) => {
     if (!synth.current) return;
 
@@ -351,7 +330,6 @@ const Chatbot = () => {
     }
   };
 
-  // Voice input handler
   const handleVoiceInput = () => {
     if (isListening) {
       if (recognition.current) {
@@ -364,7 +342,6 @@ const Chatbot = () => {
     }
   };
 
-  // Message handlers
   const handleSuggestedFollow = (suggestion) => {
     setUserInput(suggestion);
     handleSend(suggestion);
@@ -383,7 +360,6 @@ const Chatbot = () => {
       setLoading(true);
       setError(null);
   
-      // Add user message to chat
       const userMessage = {
         type: 'user',
         text: inputToSend,
@@ -391,7 +367,6 @@ const Chatbot = () => {
       };
       setChatHistory(prev => [...prev, userMessage]);
   
-      // Detect and translate input if needed
       const detectedLang = await detectLanguage(inputToSend);
       let translatedInput = inputToSend;
       
@@ -399,10 +374,11 @@ const Chatbot = () => {
         translatedInput = await translateText(inputToSend, 'en');
       }
   
-      // Make API call with translated English text
       const response = await fetch('http://localhost:3000/ask', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+
+          'Content-Type': 'application/json' },
         body: JSON.stringify({ question: translatedInput }),
       });
   
@@ -412,7 +388,7 @@ const Chatbot = () => {
       
       const data = await response.json();
       if (data.success) {
-        let finalResponse = data.answer.replace(/\*{1,3}/g, ""); // ✅ Removes *, **, and ***
+        let finalResponse = data.answer.replace(/\*{1,3}/g, ""); // Removes *, **, and ***
   
         if (selectedLanguage !== 'en') {
           finalResponse = await translateText(finalResponse, selectedLanguage);
@@ -455,6 +431,7 @@ const Chatbot = () => {
       recognition.current.lang = newLanguage;
     }
   };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 p-4 flex">
       <QuestionHistorySidebar 
@@ -468,13 +445,13 @@ const Chatbot = () => {
               <Sparkles className="w-8 h-8" /> Gov Schemes AI Assistant
             </h1>
             <div className="flex items-center gap-3 bg-gradient-to-r from-blue-600 to-purple-600 p-2 rounded-lg shadow-lg">
-  <Globe className="w-5 h-5 text-white" />
-  <LanguageSelector 
-    selectedLanguage={selectedLanguage}
-    onLanguageChange={handleLanguageChange}
-    className="bg-transparent text-white font-semibold border-none focus:outline-none cursor-pointer"
-  />
-</div>
+              <Globe className="w-5 h-5 text-white" />
+              <LanguageSelector 
+                selectedLanguage={selectedLanguage}
+                onLanguageChange={handleLanguageChange}
+                className="bg-transparent text-white font-semibold border-none focus:outline-none cursor-pointer"
+              />
+            </div>
           </div>
           <p className="text-sm text-white/80 mt-2">
             Your intelligent guide to government schemes and policies
@@ -578,3 +555,5 @@ const Chatbot = () => {
   );
 };
 export default Chatbot;
+
+          
