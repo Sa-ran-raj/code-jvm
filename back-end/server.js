@@ -279,4 +279,9 @@ app.post('/clear-cache', (req, res) => {
   res.json({ success: true, message: 'Cache cleared successfully' });
 });
 
+  const volunteerRoutes = require('./routes/volunteerRoutes');
+  app.use('/api',volunteerRoutes);
+
+  
+
 app.listen(3000, () => console.log("Server running on port 3000"));
