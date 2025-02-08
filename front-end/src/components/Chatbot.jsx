@@ -455,15 +455,12 @@ const Chatbot = () => {
       recognition.current.lang = newLanguage;
     }
   };
-
-  // Render main component
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 p-4 flex">
       <QuestionHistorySidebar 
         history={questionHistory} 
         onHistorySelect={handleHistorySelect}
       />
-      
       <div className="flex-grow max-w-4xl bg-white/95 backdrop-blur-lg rounded-3xl shadow-2xl overflow-hidden">
         <div className="bg-gradient-to-r from-indigo-600 to-purple-700 p-6 text-white">
           <div className="flex justify-between items-center">
@@ -478,13 +475,11 @@ const Chatbot = () => {
     className="bg-transparent text-white font-semibold border-none focus:outline-none cursor-pointer"
   />
 </div>
-
           </div>
           <p className="text-sm text-white/80 mt-2">
             Your intelligent guide to government schemes and policies
           </p>
         </div>
-
         <div className="p-6">
           <AnimatePresence>
             {error && (
@@ -501,7 +496,6 @@ const Chatbot = () => {
               </motion.div>
             )}
           </AnimatePresence>
-
           <div
             ref={chatContainerRef}
             className="bg-gray-50 rounded-xl p-4 h-[500px] overflow-y-auto mb-4 space-y-4 scroll-smooth border border-gray-200"
@@ -583,5 +577,4 @@ const Chatbot = () => {
     </div>
   );
 };
-
 export default Chatbot;
