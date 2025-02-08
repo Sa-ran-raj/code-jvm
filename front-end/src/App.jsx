@@ -9,9 +9,9 @@ import Home from "./components/Home";
 import Discussion from "./components/Discussion";
 import WomenEmpowermentLoginSignup from "./components/WomenEmpowermentLoginSignup";
 import VolunteeringRequest from "./components/VolunteeringRequest";
-import VolunteerRequestForm from "./components/Volunteering";
 import LinkVerify from "./components/LinkVerify";
 import FillSchemeDetails from "./components/FillSchemeDetails";
+import SearchVolunteer from "./components/searchVolunteer";
 const App = () => {
   return (
     <AuthProvider>
@@ -24,9 +24,9 @@ const App = () => {
           <Route path="/map" element={<UserLocationMap/>}/>
           <Route path="/home/discussion_forum" element={<Discussion/>}/>
           <Route path="/home/vol-req" element={<VolunteeringRequest/>}/>
-          <Route path="/home/vol" element={<VolunteerRequestForm/>}/>
           <Route path="/home/link-verify" element={<LinkVerify/>} />
           <Route path="/scheme-details" element={<FillSchemeDetails/>}/>
+          <Route path='/home/search-vol' element={<SearchVolunteer/>}/>
         </Routes>
       </BrowserRouter>
     </AuthProvider>
