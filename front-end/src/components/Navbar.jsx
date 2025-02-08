@@ -14,7 +14,7 @@ const Navbar = () => {
           {/* Logo */}
           <div className="flex items-center">
             <a href="/home" className="text-xl font-bold text-purple-800">
-              WomenEmpowerment
+              Rural Empowerment
             </a>
           </div>
 

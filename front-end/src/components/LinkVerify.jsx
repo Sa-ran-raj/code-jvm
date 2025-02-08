@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import axios from "axios";
-
 const LinkVerify = () => {
   const [url, setUrl] = useState("");
   const [verificationResult, setVerificationResult] = useState(null);
