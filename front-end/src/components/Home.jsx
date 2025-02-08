@@ -1,10 +1,10 @@
 import React from 'react';
 import Navbar from './Navbar';
 import image from "./image.webp";
-import hand from "./hand.jpg"
+import hand from "./hand.jpg";
 import { Link, useNavigate } from 'react-router-dom';
-import { Navigate } from 'react-router-dom';
 import { FaHandsHelping, FaComments, FaCheckCircle, FaUserPlus } from 'react-icons/fa';
+
 import chat from '../assets/chat.jpg'
 
 const Home = () => {
@@ -16,10 +16,10 @@ const Home = () => {
         <div className="flex flex-col md:flex-row items-center justify-between gap-12">
           <div className="md:w-1/2 space-y-6 animate-fade-in">
             <h1 className="text-4xl md:text-6xl font-bold text-purple-800 animate-slide-up">
-              Empowering Women
+              Empowering People
             </h1>
             <p className="text-xl md:text-2xl text-gray-700 leading-relaxed animate-slide-up delay-100">
-              "When women rise, we all rise. Progress in women's development isn't just about equality – it's about unleashing the full potential of humanity. Every step forward for women is a leap forward for society."
+            Empower the rural, uplift the nation. When villages thrive, the whole country rises!
             </p>
             <button className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-8 py-3 rounded-full 
               transform transition duration-300 hover:scale-105 animate-bounce">
@@ -76,19 +76,5 @@ const Home = () => {
     </div>
   );
 };
+
 export default Home;
-const style = {
-  ["@keyframes slide-up"]: {
-    "0%": { transform: "translateY(100px)", opacity: "0" },
-    "100%": { transform: "translateY(0)", opacity: "1" }
-  },
-  ["@keyframes fade-in"]: {
-    "0%": { opacity: "0" },
-    "100%": { opacity: "1" }
-  },
-  ["@keyframes float"]: {
-    "0%": { transform: "translateY(0)" },
-    "50%": { transform: "translateY(-15px)" },
-    "100%": { transform: "translateY(0)" }
-  }
-};
