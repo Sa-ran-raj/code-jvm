@@ -7,7 +7,6 @@ import Login from "./components/Login";
 import { AuthProvider } from "./components/AuthProvider";
 import Home from "./components/Home";
 import Discussion from "./components/Discussion";
-import WomenEmpowermentLoginSignup from "./components/WomenEmpowermentLoginSignup";
 import VolunteeringRequest from "./components/VolunteeringRequest";
 import FormAnalyser from "./components/LinkVerify";
 import FillSchemeDetails from "./components/FillSchemeDetails";
