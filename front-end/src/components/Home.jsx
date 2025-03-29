@@ -4,9 +4,7 @@ import image from "./image.webp";
 import hand from "./hand.jpg";
 import { Link, useNavigate } from 'react-router-dom';
 import { FaHandsHelping, FaComments, FaCheckCircle, FaUserPlus } from 'react-icons/fa';
-
 import chat from '../assets/chat.jpg'
-
 const Home = () => {
     const navigate=useNavigate();
   return (
@@ -36,7 +34,6 @@ const Home = () => {
               <div className="absolute inset-0 bg-gradient-to-t from-purple-900/50 to-transparent"></div>
             </div>
           </div>
-
         </div>
       </main>
       <div className="absolute bottom-12 right-12 animate-float">
@@ -65,8 +62,8 @@ const Home = () => {
         <span className="font-semibold text-lg" onClick={()=>navigate('/home/discussion_forum')}>Discussion Forum</span>
       </div>
       <div className="flex flex-col items-center cursor-pointer justify-center p-4 border rounded-lg shadow-md hover:shadow-xl transition-all duration-300">
-        <FaCheckCircle className="text-4xl text-blue-600 mb-2" />
-        <span className="font-semibold text-lg" onClick={()=>navigate('/home/link-verify')}>Link Verification</span>
+        <FaCheckCircle className="text-4xl text-blue-600 mb-2"/>
+        <span className="font-semibold text-lg" onClick={()=>navigate('/home/link-verify')}>Form-Analyser</span>
       </div>
       <div className="flex flex-col items-center cursor-pointer justify-center p-4 border rounded-lg shadow-md hover:shadow-xl transition-all duration-300">
         <FaUserPlus className="text-4xl text-red-600 mb-2" />
@@ -76,5 +73,4 @@ const Home = () => {
     </div>
   );
 };
-
 export default Home;

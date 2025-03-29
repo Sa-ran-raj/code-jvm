@@ -9,7 +9,7 @@ import Home from "./components/Home";
 import Discussion from "./components/Discussion";
 import WomenEmpowermentLoginSignup from "./components/WomenEmpowermentLoginSignup";
 import VolunteeringRequest from "./components/VolunteeringRequest";
-import LinkVerify from "./components/LinkVerify";
+import FormAnalyser from "./components/LinkVerify";
 import FillSchemeDetails from "./components/FillSchemeDetails";
 import SearchVolunteer from "./components/searchVolunteer";
 const App = () => {
@@ -17,14 +17,14 @@ const App = () => {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<WomenEmpowermentLoginSignup/>} />
+          <Route path="/" element={<Home/>} />
           <Route path="/home" element={<Home/>}/>
           <Route path="chatbot" element={<Chatbot/>}/>
           <Route path="/login" element={<Login/>}/>
           <Route path="/map" element={<UserLocationMap/>}/>
           <Route path="/home/discussion_forum" element={<Discussion/>}/>
           <Route path="/home/vol-req" element={<VolunteeringRequest/>}/>
-          <Route path="/home/link-verify" element={<LinkVerify/>} />
+          <Route path="/home/link-verify" element={<FormAnalyser/>} />
           <Route path="/scheme-details" element={<FillSchemeDetails/>}/>
           <Route path='/home/search-vol' element={<SearchVolunteer/>}/>
         </Routes>

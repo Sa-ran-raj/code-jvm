@@ -12,20 +12,18 @@ const detectLanguage = async (text) => {
     return 'en';
   }
 };
-
-const translateText = async (text, targetLang) => {
+const translateText = async (text,targetLang)=>{
   try {
     const response = await fetch(
       `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`
     );
     const data = await response.json();
     return data[0].map(x => x[0]).join('');
-  } catch (error) {
+  }catch (error) {
     console.error('Translation error:', error);
     return text;
   }
 };
-
 const supportedLanguages = {
   en: 'English',
   hi: 'हिंदी',
@@ -39,7 +37,6 @@ const supportedLanguages = {
   pa: 'ਪੰਜਾਬੀ',
   or: 'ଓଡ଼ିଆ'
 };
-
 const generateDynamicSuggestions = (lastBotMessage, selectedLanguage) => {
   const contextualSuggestions = {
     default: [
@@ -64,19 +61,15 @@ const generateDynamicSuggestions = (lastBotMessage, selectedLanguage) => {
       "Implementation status"
     ]
   };
-
   const messageKeywords = lastBotMessage.toLowerCase().split(/\s+/);
   const matchedCategory = 
     messageKeywords.some(keyword => ['scheme', 'yojana', 'program', 'policy'].includes(keyword)) ? 'schemes' :
     messageKeywords.some(keyword => ['state', 'district', 'region', 'local'].includes(keyword)) ? 'location' :
     'default';
-
   return contextualSuggestions[matchedCategory];
 };
-
 const ChatMessage = ({ message, onSpeak, isSpeaking, onPause, currentSpeakingMessage, resumeSpeech }) => {
   const isBot = message.type === 'bot';
-  
   const renderLinks = (text) => {
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     return text.split(urlRegex).map((part, index) =>
@@ -94,8 +87,7 @@ const ChatMessage = ({ message, onSpeak, isSpeaking, onPause, currentSpeakingMes
       ) : part
     );
   };
-
-  return (
+  return(
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -151,7 +143,6 @@ const ChatMessage = ({ message, onSpeak, isSpeaking, onPause, currentSpeakingMes
 
 const FollowUpSuggestions = ({ onSuggest, lastBotMessage, selectedLanguage }) => {
   const [suggestions, setSuggestions] = useState([]);
-
   useEffect(() => {
     const loadSuggestions = async () => {
       const defaultSuggestions = generateDynamicSuggestions(lastBotMessage || '', selectedLanguage);
@@ -252,7 +243,6 @@ const Chatbot = () => {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [chatHistory]);
-
   const setupSpeechRecognition = () => {
     if (!window.webkitSpeechRecognition && !window.SpeechRecognition) {
       setError('Speech recognition is not supported in this browser.');
@@ -260,45 +250,35 @@ const Chatbot = () => {
     }
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognitionInstance = new SpeechRecognition();
-    
     recognitionInstance.continuous = false;
     recognitionInstance.interimResults = false;
     recognitionInstance.lang = selectedLanguage;
-
-    recognitionInstance.onstart = () => {
+    recognitionInstance.onstart = ()=>{
       setIsListening(true);
       setError(null);
     };
-
-    recognitionInstance.onend = () => {
+    recognitionInstance.onend =()=>{
       setIsListening(false);
     };
-
     recognitionInstance.onerror = (event) => {
       setIsListening(false);
       setError('Speech recognition failed. Please try again or type your message.');
       console.error('Speech Recognition Error:', event.error);
     };
-
     recognitionInstance.onresult = (event) => {
       const transcript = event.results[0][0].transcript;
       setUserInput(transcript);
       setTimeout(() => handleSend(transcript), 500);
     };
-
     return recognitionInstance;
   };
-
   const speakText = (text) => {
     if (!synth.current) return;
-
     synth.current.cancel();
     setCurrentSpeakingMessage(text);
-
     const utterance = new SpeechSynthesisUtterance(text);
     currentUtterance.current = utterance;
     utterance.lang = selectedLanguage;
-
     utterance.onstart = () => setIsSpeaking(true);
     utterance.onend = () => {
       setIsSpeaking(false);
@@ -312,10 +292,8 @@ const Chatbot = () => {
       setCurrentSpeakingMessage(null);
       setError('Text-to-speech failed. Please try again.');
     };
-
     synth.current.speak(utterance);
   };
-
   const pauseSpeech = () => {
     if (synth.current && isSpeaking) {
       synth.current.pause();

@@ -33,12 +33,11 @@ router.get('/volunteers/search', async (req, res) => {
             });
         }
 
-        // Case-insensitive search for location
         const volunteers = await Volunteer.find({
             location: { $regex: new RegExp(location, 'i') }
         });
 
-        console.log('Found volunteers:', volunteers.length); // Debug log
+        console.log('Found volunteers:', volunteers.length);
 
         res.json({ 
             success: true, 

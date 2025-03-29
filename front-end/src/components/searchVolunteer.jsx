@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Mic, Search, MessageCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Mic, Search, MessageCircle, Star } from 'lucide-react';
+import ChatComponent from './ChatComponent'; // Assuming you've created this component
 
 const VolunteerSearch = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -7,6 +8,14 @@ const VolunteerSearch = () => {
   const [isListening, setIsListening] = useState(false);
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [sortOption, setSortOption] = useState('rating');
+  
+  // New state for chat functionality
+  const [selectedVolunteer, setSelectedVolunteer] = useState(null);
+  const [currentUser, setCurrentUser] = useState({
+    id: 'user123', // This would typically come from authentication
+    name: 'John Doe'  // Current logged-in user
+  });
 
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   const recognition = SpeechRecognition ? new SpeechRecognition() : null;
@@ -59,11 +68,21 @@ const VolunteerSearch = () => {
       const result = await response.json();
       
       if (result.success) {
-        setVolunteers(result.data);
-        if (result.data.length === 0) {
+        // Add sample ratings and reviews to the result data
+        const volunteersWithRatings = result.data.map(volunteer => ({
+          ...volunteer,
+          rating: Math.floor(Math.random() * 5) + 1, // Random rating between 1-5
+          reviews: Math.floor(Math.random() * 50) + 1, // Random number of reviews between 1-50
+        }));
+
+        // Sort volunteers based on selected option
+        const sortedVolunteers = sortVolunteers(volunteersWithRatings, sortOption);
+
+        setVolunteers(sortedVolunteers);
+        if (sortedVolunteers.length === 0) {
           setMessage('No volunteers found in this location');
         } else {
-          setMessage(`Found ${result.data.length} volunteer(s) in ${location || searchTerm}`);
+          setMessage(`Found ${sortedVolunteers.length} volunteer(s) in ${location || searchTerm}`);
         }
       } else {
         setMessage(result.error || 'Error fetching volunteers');
@@ -76,11 +95,34 @@ const VolunteerSearch = () => {
     }
   };
 
+  // Function to sort volunteers
+  const sortVolunteers = (volunteerList, option) => {
+    switch(option) {
+      case 'rating':
+        return [...volunteerList].sort((a, b) => b.rating - a.rating);
+      case 'reviews':
+        return [...volunteerList].sort((a, b) => b.reviews - a.reviews);
+      case 'name':
+        return [...volunteerList].sort((a, b) => a.name.localeCompare(b.name));
+      default:
+        return volunteerList;
+    }
+  };
+
   const handleWhatsAppRedirect = (phoneNo) => {
-    // Remove any non-numeric characters from phone number
     const cleanPhoneNo = phoneNo.replace(/\D/g, '');
-    // Open WhatsApp Web with the phone number
     window.open(`https://wa.me/${cleanPhoneNo}`, '_blank');
+  };
+
+  const renderStars = (rating) => {
+    return [...Array(5)].map((_, index) => (
+      <Star 
+        key={index} 
+        size={20} 
+        className={`inline-block ${index < rating ? 'text-yellow-500' : 'text-gray-300'}`} 
+        fill={index < rating ? 'currentColor' : 'none'}
+      />
+    ));
   };
 
   return (
@@ -114,6 +156,24 @@ const VolunteerSearch = () => {
           >
             {isLoading ? 'Searching...' : 'Search'}
           </button>
+        </div>
+
+        {/* Sort Options */}
+        <div className="mb-4 flex justify-end items-center space-x-4">
+          <label className="text-gray-700 font-medium">Sort by:</label>
+          <select 
+            value={sortOption}
+            onChange={(e) => {
+              setSortOption(e.target.value);
+              // Re-sort existing volunteers when sort option changes
+              setVolunteers(sortVolunteers(volunteers, e.target.value));
+            }}
+            className="p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+          >
+            <option value="rating">Highest Rating</option>
+            <option value="reviews">Most Reviews</option>
+            <option value="name">Name (A-Z)</option>
+          </select>
         </div>
 
         {message && (
@@ -160,8 +220,20 @@ const VolunteerSearch = () => {
                     ))}
                   </div>
                 </div>
+                {/* Rating and Reviews Section */}
+                <div>
+                  <p className="font-semibold text-gray-700">Rating</p>
+                  <div className="flex items-center">
+                    {renderStars(volunteer.rating)}
+                    <span className="ml-2 text-gray-600">({volunteer.rating}/5)</span>
+                  </div>
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-700">Reviews</p>
+                  <p>{volunteer.reviews} reviews</p>
+                </div>
               </div>
-              <div className="mt-4 flex justify-end">
+              <div className="mt-4 flex justify-between items-center">
                 <button
                   onClick={() => handleWhatsAppRedirect(volunteer.phoneNo)}
                   className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition duration-200"
@@ -169,10 +241,27 @@ const VolunteerSearch = () => {
                   <MessageCircle size={20} />
                   Contact on WhatsApp
                 </button>
+                <button
+                  onClick={() => setSelectedVolunteer({
+                    id: volunteer.phoneNo, // Use phone number as unique ID
+                    name: volunteer.name
+                  })}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition duration-200"
+                >
+                  <MessageCircle size={20} />
+                  Start Chat
+                </button>
               </div>
             </div>
           ))}
         </div>
+
+        {selectedVolunteer && (
+          <ChatComponent 
+            currentUser={currentUser}
+            selectedVolunteer={selectedVolunteer}
+          />
+        )}
       </div>
     </div>
   );
